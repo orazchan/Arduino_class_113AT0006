@@ -1,0 +1,128 @@
+const int redPin = 9;
+const int greenPin = 10;
+const int bluePin = 11;
+const int buttonPin = 2;
+
+int mode = 0;
+bool lastButtonState = HIGH;
+
+int fadeValue = 0;
+int fadeDirection = 1;
+unsigned long lastUpdate = 0;
+const int fadeSpeed = 5; // fade speed
+
+// rainbow
+const int rainbowColors[7][3] = {
+  {255, 0, 0},   // red
+  {255, 127, 0}, // orange
+  {255, 255, 0}, // yellow
+  {0, 255, 0},   // green
+  {0, 0, 255},   // blue
+  {75, 0, 130},  // violet
+  {148, 0, 211}  // purple
+};
+int rainbowIndex = 0;
+
+// blink
+unsigned long lastBlink = 0;
+const int blinkInterval = 500;
+bool blinkState = false;
+
+// pulse
+int pulseValue = 0;
+int pulseDirection = 1;
+
+// random
+unsigned long lastRandom = 0;
+const int randomInterval = 300;
+int randR=0, randG=0, randB=0;
+
+// set colors
+void setColor(int r, int g, int b) {
+  analogWrite(redPin, 255 - r);
+  analogWrite(greenPin, 255 - g);
+  analogWrite(bluePin, 255 - b);
+}
+
+// button
+void checkButton() {
+  bool reading = digitalRead(buttonPin);
+  if (reading == LOW && lastButtonState == HIGH) {
+    mode = (mode + 1) % 4; // 4 mode
+    delay(200);
+  }
+  lastButtonState = reading;
+}
+
+void fadeBetween(int r1,int g1,int b1,int r2,int g2,int b2,int step){
+  int r = r1 + ((r2 - r1) * step) / 255;
+  int g = g1 + ((g2 - g1) * step) / 255;
+  int b = b1 + ((b2 - b1) * step) / 255;
+  setColor(r,g,b);
+}
+
+void setup(){
+  pinMode(redPin, OUTPUT);
+  pinMode(greenPin, OUTPUT);
+  pinMode(bluePin, OUTPUT);
+  pinMode(buttonPin, INPUT_PULLUP);
+}
+
+void loop(){
+  checkButton();
+  unsigned long currentMillis = millis();
+
+  // blink pink orange
+  if(mode == 0){
+    if(currentMillis - lastBlink > blinkInterval){
+      blinkState = !blinkState;
+      if(blinkState) setColor(255, 105, 180); // hồng
+      else setColor(255, 127, 0); // cam
+      lastBlink = currentMillis;
+    }
+  }
+
+  // rainbow fade
+  else if(mode == 1){
+    if(currentMillis - lastUpdate > 20){
+      fadeValue += fadeSpeed;
+      if(fadeValue > 255){
+        fadeValue = 0;
+        rainbowIndex = (rainbowIndex + 1) % 7;
+      }
+      int nextIndex = (rainbowIndex + 1) % 7;
+      fadeBetween(
+        rainbowColors[rainbowIndex][0],
+        rainbowColors[rainbowIndex][1],
+        rainbowColors[rainbowIndex][2],
+        rainbowColors[nextIndex][0],
+        rainbowColors[nextIndex][1],
+        rainbowColors[nextIndex][2],
+        fadeValue
+      );
+      lastUpdate = currentMillis;
+    }
+  }
+
+  // pulse pink
+  else if(mode == 2){
+    if(currentMillis - lastUpdate > 20){
+      pulseValue += pulseDirection * fadeSpeed;
+      if(pulseValue >= 255){ pulseValue=255; pulseDirection=-1;}
+      if(pulseValue <= 0){ pulseValue=0; pulseDirection=1;}
+      setColor(255, pulseValue/2, pulseValue/2); // hồng thở
+      lastUpdate = currentMillis;
+    }
+  }
+
+  // random colors
+  else if(mode == 3){
+    if(currentMillis - lastRandom > randomInterval){
+      randR = random(0,256);
+      randG = random(0,256);
+      randB = random(0,256);
+      setColor(randR,randG,randB);
+      lastRandom = currentMillis;
+    }
+  }
+}
